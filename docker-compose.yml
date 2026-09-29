@@ -3,11 +3,29 @@ services:
     build: .
     ports:
       - "3000:3000"
-    env_file:
-      - .env
+    environment:
+      DATABASE_URL: postgresql://phonemail:phonemail_dev_password@postgres:5432/phonemail
+      JWT_SECRET: ${JWT_SECRET:-local-demo-secret-change-before-hosting}
+      OTP_SECRET: ${OTP_SECRET:-local-demo-otp-secret}
+      EMAIL_DOMAIN: ${EMAIL_DOMAIN:-demo.phonemail.test}
+      OTP_MODE: ${OTP_MODE:-demo}
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL:-}
+      BREVO_REPLY_TO_EMAIL: ${BREVO_REPLY_TO_EMAIL:-}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_VERIFY_SERVICE_SID: ${TWILIO_VERIFY_SERVICE_SID:-}
     depends_on:
-      - postgres
-      - mailpit
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
     volumes:
       - ./uploads:/app/uploads
 
@@ -22,6 +40,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U phonemail -d phonemail"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
 
   mailpit:
     image: axllent/mailpit

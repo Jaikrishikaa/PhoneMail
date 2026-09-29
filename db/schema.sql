@@ -1,4 +1,4 @@
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY,
   phone_number VARCHAR(20) UNIQUE NOT NULL,
   email_address VARCHAR(255) UNIQUE NOT NULL,
@@ -8,14 +8,14 @@ CREATE TABLE users (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE conversations (
+CREATE TABLE IF NOT EXISTS conversations (
   id UUID PRIMARY KEY,
   subject TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE emails (
+CREATE TABLE IF NOT EXISTS emails (
   id UUID PRIMARY KEY,
   conversation_id UUID REFERENCES conversations(id),
   sender_id UUID REFERENCES users(id),
@@ -31,19 +31,28 @@ CREATE TABLE emails (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE attachments (
+CREATE TABLE IF NOT EXISTS attachments (
   id UUID PRIMARY KEY,
   email_id UUID REFERENCES emails(id) ON DELETE CASCADE,
   filename TEXT NOT NULL,
   stored_name TEXT NOT NULL,
   mime_type TEXT,
-  size_bytes INTEGER
+  size_bytes INTEGER,
+  content BYTEA
 );
 
-CREATE TABLE otp_codes (
+CREATE TABLE IF NOT EXISTS otp_codes (
   id UUID PRIMARY KEY,
   phone_number VARCHAR(20) NOT NULL,
-  code VARCHAR(6) NOT NULL,
+  code VARCHAR(64) NOT NULL,
   expires_at TIMESTAMPTZ NOT NULL,
-  verified BOOLEAN DEFAULT FALSE
+  verified BOOLEAN DEFAULT FALSE,
+  attempts INTEGER NOT NULL DEFAULT 0
 );
+
+-- Keep databases created from earlier MVP versions compatible with OTP hashes.
+ALTER TABLE otp_codes ALTER COLUMN code TYPE VARCHAR(64);
+ALTER TABLE otp_codes ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE attachments ADD COLUMN IF NOT EXISTS content BYTEA;
+CREATE INDEX IF NOT EXISTS otp_codes_phone_expiry_idx ON otp_codes (phone_number, expires_at DESC);
+CREATE INDEX IF NOT EXISTS emails_recipient_folder_idx ON emails (recipient_id, folder, created_at DESC);
