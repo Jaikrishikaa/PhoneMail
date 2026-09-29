@@ -1,42 +1,70 @@
-# PhoneMail
+# PhoneMail Buildathon MVP
 
-PhoneMail is a hackathon MVP for phone-number-based identities and an email-style inbox. In demo mode, messages between registered PhoneMail accounts are stored and delivered inside the app. Demo addresses use `EMAIL_DOMAIN` (default: `demo.phonemail.test`); that reserved demo domain cannot receive mail from Gmail or the public internet.
+PhoneMail gives each account an email-style identity based on its phone number. It provides a Gmail-like desktop mailbox and a conversation-style mobile interface from the same responsive website.
+
+## Included features
+
+- Phone-number registration with OTP-gated account creation; passwords are not collected
+- Demo OTP mode: a fresh random six-digit code appears in the browser
+- Inbox, Sent, Drafts, Spam, Trash, Favorites, search, replies, and attachments
+- Mobile conversation list inspired by chat mail clients, with search and filter chips
+- Multi-recipient compose for internal group delivery
+- Terms screen plus account settings: display name, language, profile photo, notification preference, mobile-use preference, and aliases
+- Optional SMS OTP and SMS notification integration through Twilio
+- Optional external outbound mail through Brevo or SMTP
+- Inbound webhook route for Resend or another inbound-email provider
 
 ## Run locally
-
-Docker Compose is the easiest option because it starts PostgreSQL and Mailpit as well as the app:
 
 ```bash
 docker compose up --build
 ```
 
-Open `http://localhost:3000`. Create two accounts with international-format phone numbers such as `+919876543210`. In the default demo OTP mode, no SMS is sent: the temporary code is shown in the signup page. Verify both accounts, then send a message to the other account's PhoneMail address.
+Open `http://localhost:3000`. Create two accounts using international numbers. Click **Send SMS code**, enter the displayed demo code, then send to the other account's address, such as `919876543210@demo.phonemail.test`.
 
-To run the app directly with Node, start PostgreSQL separately, copy `.env.example` to `.env`, set `DATABASE_URL` and a long random `JWT_SECRET`, then run:
+Mailpit is available at `http://localhost:8025` for local SMTP testing.
+
+## Temporary preview mode
+
+The checked-in `.env` is ignored by Git and may contain temporary values for a
+local preview. Run this alongside an existing local service with:
 
 ```bash
-npm start
+npm run preview
 ```
 
-## Delivery modes
+Open `http://localhost:3001`. It uses the configured preview identity and
+Twilio Verify mode. `NOTIFICATION_MODE=demo` writes a simulated arrival-SMS
+message to the server log until a real `TWILIO_SMS_FROM` is available. Never
+expose the temporary inbound webhook secret outside development. If Docker is
+not running, set `DATABASE_URL_PREVIEW` to the direct connection string for
+this project's PostgreSQL database.
 
-- **PhoneMail-to-PhoneMail:** works inside the app and does not need SMTP.
-- **PhoneMail-to-Gmail or another external mailbox:** configure `BREVO_API_KEY` and a sender address verified in Brevo. The provider-verified sender is used for delivery. External replies do not arrive in PhoneMail because demo addresses have no public inbound-mail routing.
-- **Phone verification:** `OTP_MODE=demo` displays a demo code in the app and does not verify ownership of the phone. For real SMS, set `OTP_MODE=twilio` and configure the Twilio account SID, auth token, and Verify Service SID. Trial accounts can text only recipient numbers verified in Twilio; the trial currently includes 40 free verifications, then requires an upgrade for continued use. [Twilio Verify trial limits](https://www.twilio.com/docs/usage/trials/try-out-verify)
+## Deployment configuration
 
-Never commit `.env` or publish API keys. Render Free blocks SMTP ports, so configure Brevo's HTTPS API for external sending on Render.
-
-## Render deployment settings
-
-Deploy the merged `main` branch as a Node web service with build command `npm install` and start command `npm start`. Configure a PostgreSQL `DATABASE_URL` (for example from Neon), a long random `JWT_SECRET`, and:
+Set these private environment variables in the host:
 
 ```text
-EMAIL_DOMAIN=demo.phonemail.test
-OTP_MODE=demo
+DATABASE_URL=postgresql://...
+JWT_SECRET=long-random-secret
+OTP_SECRET=another-long-random-secret
+EMAIL_DOMAIN=mail.your-domain.example
+APP_NAME=Your product name
+OTP_MODE=twilio
 ```
 
-For actual SMS, set `OTP_MODE=twilio` and add `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_VERIFY_SERVICE_SID` in Render's private environment settings. Create a Verify Service in Twilio first. The app applies the schema at startup. Add Brevo values only after sender verification. Attachments are stored in PostgreSQL so they survive app restarts. Render Free may sleep while idle; the first request can take time to wake the service.
+For live Twilio verification, use `OTP_MODE=twilio` plus `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_VERIFY_SERVICE_SID`. The registration page supports SMS and Twilio Verify voice-call delivery. For email-arrival SMS notifications, also set `TWILIO_SMS_FROM` to a Twilio number. Trial accounts can send only to numbers verified in Twilio.
 
-## Current MVP features
+For an offline demo without a Twilio sender number, set `NOTIFICATION_MODE=demo`. Arrival notifications are then logged by the app rather than sent as an SMS.
 
-Phone/password accounts with OTP-gated registration, internal inbox and sent mail, drafts, replies, search, favorites, spam, trash, and attachments. Public inbound email, account recovery, contact management, and production-grade SMS/email abuse protection are not implemented yet.
+For public inbound email, create an `INBOUND_WEBHOOK_SECRET`, then configure the mail provider to POST to:
+
+```text
+https://your-host/api/inbound/email?secret=YOUR_SECRET
+```
+
+The provider must send `to`, `from`, `subject`, and `text` fields. Configure an inbound domain with that provider. You must own or control `EMAIL_DOMAIN`: use a domain you register (for example `mail.your-domain.example`) and add the provider's MX/DKIM/SPF records. Do not use `phonemail.com` unless you control it; the application cannot create identities on a domain owned by someone else.
+
+## Limits of demo mode
+
+Demo OTP confirms that the screen flow works but does not prove ownership of a phone number. Real SMS/voice verification and public email delivery require a provider account, sender number, domain, and credentials. The Docker app starts fully with demo OTP and internal messaging without any paid service.

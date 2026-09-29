@@ -8,6 +8,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-local-demo-secret-change-before-hosting}
       OTP_SECRET: ${OTP_SECRET:-local-demo-otp-secret}
       EMAIL_DOMAIN: ${EMAIL_DOMAIN:-demo.phonemail.test}
+      APP_NAME: ${APP_NAME:-PhoneMail}
       OTP_MODE: ${OTP_MODE:-demo}
       SMTP_HOST: ${SMTP_HOST:-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}
@@ -21,6 +22,9 @@ services:
       TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
       TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
       TWILIO_VERIFY_SERVICE_SID: ${TWILIO_VERIFY_SERVICE_SID:-}
+      TWILIO_SMS_FROM: ${TWILIO_SMS_FROM:-}
+      NOTIFICATION_MODE: ${NOTIFICATION_MODE:-demo}
+      INBOUND_WEBHOOK_SECRET: ${INBOUND_WEBHOOK_SECRET:-}
     depends_on:
       postgres:
         condition: service_healthy

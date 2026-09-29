@@ -50,6 +50,18 @@ CREATE TABLE IF NOT EXISTS otp_codes (
   attempts INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS aliases (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  local_part VARCHAR(80) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (local_part)
+);
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_picture TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS has_mobile_app BOOLEAN NOT NULL DEFAULT FALSE;
+
 -- Keep databases created from earlier MVP versions compatible with OTP hashes.
 ALTER TABLE otp_codes ALTER COLUMN code TYPE VARCHAR(64);
 ALTER TABLE otp_codes ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0;
